@@ -1,0 +1,87 @@
+---
+- name: Install docker
+  gather_facts: yes
+  hosts: localhost
+  become: yes
+
+  tasks:
+  - name: Install dependencies on RHEL family
+    yum:
+      name:
+        - yum-utils
+        - device-mapper-persistent-data
+        - lvm2
+    when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat"
+
+  - name: Install dependencies on ubuntu
+    apt:
+      name:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg-agent
+        - software-properties-common
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Enable docker repository on Amazon Linux
+    shell: "amazon-linux-extras install docker"
+    when: ansible_distribution == "Amazon"
+
+  - name: Download Docker repository on RHEL family
+    get_url:
+      url: https://download.docker.com/linux/centos/docker-ce.repo
+      dest: /etc/yum.repos.d/docer-ce.repo
+    when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat"
+
+  - name: Add GPG key for docker repository on Ubuntu 
+    apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Enable Docker Edge repo on RHEL family
+    ini_file:
+      dest: /etc/yum.repos.d/docer-ce.repo
+      section: 'docker-ce-edge'
+      option: enabled
+      value: '0'
+    when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat"
+
+  - name: Enable Docker Test repo on RHEL family
+    ini_file:
+      dest: /etc/yum.repos.d/docer-ce.repo
+      section: 'docker-ce-test'
+      option: enabled
+      value: 0
+    when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat"
+
+  - name: Add docker repo on Ubuntu
+    apt_repository:
+      repo: deb https://download.docker.com/linux/ubuntu focal stable
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Install Docker on RHEL Family
+    package:
+      name: docker-ce
+    when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat"
+
+  - name: Install Docker on Amazon Linux
+    package:
+      name: docker
+    when: ansible_distribution == "Amazon"
+
+  - name: Install Docker on Ubuntu
+    package:
+      name:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Add user to Docker group
+    shell: "usermod -aG docker {{ duser }}"
+
+  - name: start Docker service
+    service:
+      name: docker
+      state: started
+      enabled: yes
